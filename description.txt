@@ -1,0 +1,11 @@
+Smash chickens and earn points solo or with friends in this minigame and hear their disembodied clucks haunt the arena...
+
+editable match settings include:
+ - chicken spawn radius
+ - chicken spawn count per player
+ - maximum number of chickens spawned
+ - match duration
+
+warning: spawning large quantites of objects may crash the game
+
+please leave a comment on the workshop page if you find any bugs
