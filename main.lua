@@ -334,32 +334,51 @@ end
 
 -------------------- UI Callbacks --------------------
 
+function callbackTemplate(callbackData, table, maxValue, uiTag, uiText)
+    local currentIndex = getTableValueIndex(table, maxValue)
+    local nextIndex = currentIndex % #table + 1
+    maxValue = table[nextIndex]
+    tm.playerUI.SetUIValue(callbackData.playerId, uiTag, uiText .. maxValue)
+end
+
 function cycleDetectionThreshold(callbackData)
-    local currentIndex = getTableValueIndex(detectionValueIncrements, matchDataTable.collisionDetectionThreshold)
-    local nextIndex = currentIndex % #detectionValueIncrements + 1
-    matchDataTable.collisionDetectionThreshold = detectionValueIncrements[nextIndex]
-    tm.playerUI.SetUIValue(callbackData.playerId, "detectionradius", "detection radius: " .. matchDataTable.collisionDetectionThreshold)
+    callbackTemplate(
+        callbackData, 
+        detectionValueIncrements, 
+        matchDataTable.collisionDetectionThreshold, 
+        "detectionradius", 
+        "detection radius: "
+    )
 end
 
 function cycleMaxEntityCount(callbackData)
-    local currentIndex = getTableValueIndex(maxValueIncrements, matchDataTable.maxEntityCount)
-    local nextIndex = currentIndex % #maxValueIncrements + 1
-    matchDataTable.maxEntityCount = maxValueIncrements[nextIndex]
-    tm.playerUI.SetUIValue(callbackData.playerId, "maxentitycount", "max spawns: " .. matchDataTable.maxEntityCount)
+    callbackTemplate(
+        callbackData, 
+        maxValueIncrements, 
+        matchDataTable.maxEntityCount, 
+        "maxentitycount", 
+        "max spawns: "
+    )
 end
 
 function cycleSpawnValues(callbackData)
-    local currentIndex = getTableValueIndex(radiusValueIncrements, matchDataTable.spawnRadius)
-    local nextIndex = currentIndex % #radiusValueIncrements + 1
-    matchDataTable.spawnRadius = radiusValueIncrements[nextIndex]
-    tm.playerUI.SetUIValue(callbackData.playerId, "spawnradius", "spawn radius: " .. matchDataTable.spawnRadius)
+    callbackTemplate(
+        callbackData, 
+        radiusValueIncrements, 
+        matchDataTable.spawnRadius, 
+        "spawnradius", 
+        "spawn radius: "
+    )
 end
 
 function cycleSpawnQuantity(callbackData)
-    local currentIndex = getTableValueIndex(spawnValueIncrements, matchDataTable.spawnQuantity)
-    local nextIndex = currentIndex % #spawnValueIncrements + 1
-    matchDataTable.spawnQuantity = spawnValueIncrements[nextIndex]
-    tm.playerUI.SetUIValue(callbackData.playerId, "spawnquantity", "spawn quantity(per player): " .. matchDataTable.spawnQuantity)
+    callbackTemplate(
+        callbackData, 
+        spawnValueIncrements, 
+        matchDataTable.spawnQuantity, 
+        "spawnquantity", 
+        "spawn quantity(per player): "
+    )
 end
 
 function cycleMatchTime(callbackData)
