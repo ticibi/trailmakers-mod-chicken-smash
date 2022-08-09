@@ -91,8 +91,7 @@ end
 
 function update()
     local playerList = tm.players.CurrentPlayers()
-    for _, player in pairs(playerList) do   
-        local playerData = playerDataTable[player.playerId]
+    for _, player in pairs(playerList) do
         if localTimer > 10 then
             if matchDataTable.isWaitingForPlayersToJoin then
                 startLobbyCountdown(player.playerId)
@@ -116,7 +115,7 @@ function updateTimers()
     localTimer = localTimer + 1
     if debug then
         globalTimer = globalTimer + 1
-        tm.playerUI.SetUIValue(player.playerId, "globaltime", "time: " .. globalTimer/10)
+        SetValue(player.playerId, "globaltime", "time: " .. globalTimer/10)
     end
 end
 
@@ -130,7 +129,7 @@ function startMatchLoop(playerId)
             spawnEntity(playerId, chickenModel, matchDataTable.spawnQuantity)
         end
         matchDataTable.matchTimer = matchDataTable.matchTimer - 1
-        tm.playerUI.SetUIValue(playerId, "countdown", matchDataTable.matchTimer .. " seconds remaining!") 
+        SetValue(playerId, "countdown", matchDataTable.matchTimer .. " seconds remaining!") 
     else
         onMatchFinished()
     end
@@ -139,13 +138,14 @@ end
 function startLobbyCountdown(playerId)
     if matchDataTable.timer > 1 then
         matchDataTable.timer = matchDataTable.timer - 1
-        tm.playerUI.SetUIValue(playerId, "countdown", matchDataTable.timer .. " seconds") 
+        SetValue(playerId, "countdown", matchDataTable.timer .. " seconds") 
     else
-        tm.audio.PlayAudioAtGameobject(audioCues.begin, tm.players.GetPlayerGameObject(playerId))
+        local player = tm.players.GetPlayerGameObject(playerId)
+        tm.audio.PlayAudioAtGameobject(audioCues.begin, player)
         matchDataTable.matchTimer = matchDataTable.matchTimerDefault
         matchDataTable.isWaitingForPlayersToJoin = false
         matchDataTable.hasMatchStarted = true
-        matchLobbyPage(playerId)
+        MatchLobbyPage(playerId)
     end
 end
 
@@ -161,7 +161,7 @@ function startMatchEndCountdown(playerId)
         matchDataTable.entitiesSmashed = 0
         for _, pId in pairs(matchDataTable.players) do
             playerDataTable[pId].score = 0
-            homePage(pId)
+            HomePage(pId)
         end
         matchDataTable.players = {}
         matchDataTable.entities = {}
@@ -181,7 +181,7 @@ function onMatchFinished()
             playerDataTable[playerId].stats.hiscore = playerDataTable[playerId].score
         end
         savePlayerData(playerId)
-        matchLobbyPage(playerId)
+        MatchLobbyPage(playerId)
     end
     for _, chicken in pairs(matchDataTable.entities) do
         if chicken.Exists() then
@@ -197,7 +197,8 @@ function onSmashEntity(playerId)
     playerData.stats.totalScore = playerData.stats.totalScore + 1
     playerData.stats.smashed = playerData.stats.smashed + 1
     for _, player in pairs(matchDataTable.players) do
-        tm.playerUI.SetUIValue(player, "score_" .. playerId, tm.players.GetPlayerName(playerId) .. " - " .. playerData.score .. " pts") 
+        local name = tm.players.GetPlayerName(playerId)
+        tm.playerUI.SetUIValue(player, "score_" .. playerId, name .. " - " .. playerData.score .. " pts") 
     end 
 end
     
@@ -229,110 +230,127 @@ function spawnEntity(playerId, model, quantity)
     end
 end
 
-function title(playerId, titleText) -- throwaway label
-    tm.playerUI.AddUILabel(playerId, "title", titleText)
+-----------------------------------------------------------------------
+-----------------------------------------------------------------------
+
+function SetValue(playerId, key, text)
+    tm.playerUI.SetUIValue(playerId, key, text)
 end
 
-function rerouteLobby(callbackData)
-    matchLobbyPage(callbackData.playerId)
-end
-
-function rerouteJoinMatch(callbackData)
-    onJoinMatch(callbackData.playerId)
-end
-
-function rerouteHomePage(callbackData)
-    homePage(callbackData.playerId)
-end
-
-function homePage(playerId)
-    tm.playerUI.ClearUI(playerId)
-    if matchDataTable.hasMatchBeenCreated then
-        local hostName = tm.players.GetPlayerName(matchDataTable.hostId)
-        tm.playerUI.AddUILabel(playerId, "host", hostName .. " is hosting a match!") 
-        tm.playerUI.AddUIButton(playerId, "joinmatch", "join match", rerouteJoinMatch)
-    else
-        tm.playerUI.AddUIButton(playerId, "makematch", "start a match", onCreateMatch)
+function Broadcast(key, value)
+    for i, player in ipairs(tm.players.CurrentPlayers()) do
+        SetValue(player.playerId, key, value)
     end
-    tm.playerUI.AddUIButton(playerId, "mystats", "my stats", statsPage)
-    if debug then tm.playerUI.AddUILabel(playerId, "globaltime", "time: " .. globalTimer) end
 end
 
-function matchLobbyPage(playerId)
+function Clear(playerId)
     tm.playerUI.ClearUI(playerId)
-    if matchDataTable.isWaitingForPlayersToJoin then
-        title(playerId, "Get in your vehicles!")
-        title(playerId, "The match will start in...")
-    elseif matchDataTable.hasMatchFinished then
-        title(playerId, "Match Complete!")
-        title(playerId, "Ending in...")
-    elseif matchDataTable.hasMatchStarted then
-        title(playerId, "SMASH THE CHICKENS!")
+end
+
+function Label(playerId, key, text)
+    tm.playerUI.AddUILabel(playerId, key, text)
+end
+
+function Divider(playerId)
+    Label(playerId, "divider", "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+end
+
+function Button(playerId, key, text, func)
+    tm.playerUI.AddUIButton(playerId, key, text, func)
+end
+
+function HomePage(playerId)
+    if type(playerId) ~= "number" then
+        playerId = playerId.playerId
+    end
+    Clear(playerId)
+    if matchDataTable.hasMatchBeenCreated then
+        local name = tm.players.GetPlayerName(matchDataTable.hostId)
+        Label(playerId, "host", name .. " is hosting a match!") 
+        Button(playerId, "joinmatch", "join match", MatchLobbyPage)
     else
-        title(playerId, "-")
+        Button(playerId, "makematch", "start a match", onCreateMatch)
+    end
+    Button(playerId, "mystats", "my stats", StatisticsPage)
+    if debug then Label(playerId, "globaltime", "time: " .. globalTimer) end
+end
+
+function MatchLobbyPage(playerId)
+    if type(playerId) ~= "number" then
+        playerId = playerId.playerId
+    end
+    Clear(playerId)
+    if matchDataTable.isWaitingForPlayersToJoin then
+        Label(playerId, "Get in your vehicles!")
+        Label(playerId, "The match will start in...")
+    elseif matchDataTable.hasMatchFinished then
+        Label(playerId, "Match Complete!")
+        Label(playerId, "Ending in...")
+    elseif matchDataTable.hasMatchStarted then
+        Label(playerId, "SMASH THE CHICKENS!")
+    else
+        Label(playerId, "-")
     end
     if not matchDataTable.hasMatchFinished or matchDataTable.hasMatchFinished then
-        tm.playerUI.AddUILabel(playerId, "countdown", matchDataTable.timer .. "s") 
+        Label(playerId, "countdown", matchDataTable.timer .. "s")
     end
     if matchDataTable.isWaitingForPlayersToJoin then
-        title(playerId, "Lobby:")
+        Label(playerId, "Lobby:")
     elseif matchDataTable.hasMatchFinished then
-        title(playerId, "Final Scores:")
+        Label(playerId, "Final Scores:")
     elseif matchDataTable.hasMatchStarted then
-        title(playerId, "Leaderboard:")
+        Label(playerId, "Leaderboard:")
     else
-        title(playerId, "-")
+        Label(playerId, "-")
     end
     if matchDataTable.isWaitingForPlayersToJoin then
-        for _, id in pairs(matchDataTable.players) do
+        for i, id in ipairs(matchDataTable.players) do
+            local name = tm.players.GetPlayerName(id)
             if id == matchDataTable.hostId then
-                tm.playerUI.AddUILabel(playerId, "lobbylist", tm.players.GetPlayerName(id) .. " (host)") 
+                Label(playerId, "lobbylist", name .. " (host)")
             else
-                if playerDataTable[id].isReady then
-                    tm.playerUI.AddUILabel(playerId, "lobbylist", tm.players.GetPlayerName(id)) 
-                else
-                    tm.playerUI.AddUILabel(playerId, "lobbylist", tm.players.GetPlayerName(id)) 
-                end
+                Label(playerId, "lobbylist", name)
             end
         end
     else
-        for _, id in pairs(matchDataTable.players) do
+        for i, id in ipairs(matchDataTable.players) do
             local playerData = playerDataTable[id]
+            local name = tm.players.GetPlayerName(id)
             if playerData.isWinner then
-                tm.playerUI.AddUILabel(playerId, "score_" .. id, tm.players.GetPlayerName(id) .. " - " .. playerData.score .. " pts HIGHEST SCORE") 
+                Label(playerId, "score_" .. id, name .. " - " .. playerData.score .. " pts HIGHEST SCORE")
                 playerData.isWinner = false
             else
-                tm.playerUI.AddUILabel(playerId, "score_" .. id, tm.players.GetPlayerName(id) .. " - " .. playerData.score .. " pts") 
+                Label(playerId, "score_" .. id, name .. " - " .. playerData.score .. " pts")
             end
         end
     end
     if playerId == matchDataTable.hostId and matchDataTable.isWaitingForPlayersToJoin then
-        tm.playerUI.AddUIButton(playerId, "matchsettings", "match settings", matchSettingsPage)
+        Button(playerId, "matchsettings", "match settings", MatchSettingsPage)
     end
 end
 
-function matchSettingsPage(callbackData)
+function MatchSettingsPage(callbackData)
     local playerId = callbackData.playerId
-    tm.playerUI.ClearUI(playerId)
-    title(playerId, "Waiting for match to start in...")
-    tm.playerUI.AddUILabel(playerId, "countdown", matchDataTable.timer .. "s")
-    title(playerId, "Match Settings")
-    tm.playerUI.AddUIButton(playerId, "spawnradius", "spawn radius: " .. matchDataTable.spawnRadius, cycleSpawnValues)
-    tm.playerUI.AddUIButton(playerId, "spawnquantity", "spawn quantity(per player): " .. matchDataTable.spawnQuantity, cycleSpawnQuantity)
-    tm.playerUI.AddUIButton(playerId, "maxentitycount", "max spawns: " .. matchDataTable.maxEntityCount, cycleMaxEntityCount)
-    tm.playerUI.AddUIButton(playerId, "matchtimer", "match duration: " .. matchDataTable.matchTimerDefault, cycleMatchTime)
-    tm.playerUI.AddUIButton(playerId, "back", "back", rerouteLobby)
+    Clear(playerId)
+    Label(playerId, "Waiting for match to start in...")
+    Label(playerId, "countdown", matchDataTable.timer .. "s")
+    Label(playerId, "Match Settings")
+    Button(playerId, "spawnradius", "spawn radius: " .. matchDataTable.spawnRadius, cycleSpawnValues)
+    Button(playerId, "spawnquantity", "spawn quantity(per player): " .. matchDataTable.spawnQuantity, cycleSpawnQuantity)
+    Button(playerId, "maxentitycount", "max spawns: " .. matchDataTable.maxEntityCount, cycleMaxEntityCount)
+    Button(playerId, "matchtimer", "match duration: " .. matchDataTable.matchTimerDefault, cycleMatchTime)
+    Button(playerId, "back", "back", MatchLobbyPage)
 end
 
-function statsPage(callbackData)
+function StatisticsPage(callbackData)
     local playerId = callbackData.playerId
     local playerData = playerDataTable[playerId]
-    tm.playerUI.ClearUI(playerId)
-    title(playerId, "My Stats")
-    tm.playerUI.AddUILabel(playerId, "hiscore", "hiscore: " .. playerData.stats.hiscore)
-    tm.playerUI.AddUILabel(playerId, "smashed", "chickens smashed: " .. playerData.stats.smashed)
-    tm.playerUI.AddUILabel(playerId, "matches", "matches played: " .. playerData.stats.matches)
-    tm.playerUI.AddUIButton(playerId, "back", "back", rerouteHomePage)
+    Clear(playerId)
+    Label(playerId, "My Stats")
+    Label(playerId, "hiscore", "hiscore: " .. playerData.stats.hiscore)
+    Label(playerId, "smashed", "chickens smashed: " .. playerData.stats.smashed)
+    Label(playerId, "matches", "matches played: " .. playerData.stats.matches)
+    Button(playerId, "back", "back", HomePage)
 end
 
 -------------------- UI Callbacks --------------------
@@ -341,7 +359,7 @@ function callbackTemplate(callbackData, table, maxValue, uiTag, uiText)
     local currentIndex = getTableValueIndex(table, maxValue)
     local nextIndex = currentIndex % #table + 1
     maxValue = table[nextIndex]
-    tm.playerUI.SetUIValue(callbackData.playerId, uiTag, uiText .. maxValue)
+    SetValue(callbackData.playerId, uiTag, uiText .. maxValue)
 end
 
 function cycleDetectionThreshold(callbackData)
@@ -390,18 +408,19 @@ function cycleMatchTime(callbackData)
     else
         matchDataTable.matchTimerDefault = 10
     end
-    tm.playerUI.SetUIValue(callbackData.playerId, "matchtimer", "match duration: " .. matchDataTable.matchTimerDefault)
+    SetValue(callbackData.playerId, "matchtimer", "match duration: " .. matchDataTable.matchTimerDefault)
 end
 
 function onCreateMatch(callbackData)
     if matchDataTable.hostId == nil and not matchDataTable.hasMatchBeenCreated then
-        tm.audio.PlayAudioAtGameobject(audioCues.boop, tm.players.GetPlayerGameObject(callbackData.playerId))
+        local player = tm.players.GetPlayerGameObject(callbackData.playerId)
+        tm.audio.PlayAudioAtGameobject(audioCues.boop, player)
         tm.physics.ClearAllSpawns()
         matchDataTable.hasMatchBeenCreated = true
         matchDataTable.isWaitingForPlayersToJoin = true
         matchDataTable.hostId = callbackData.playerId
         onJoinMatch(callbackData.playerId)
-        matchLobbyPage(callbackData.playerId)
+        MatchLobbyPage(callbackData.playerId)
     end
     for _, player in pairs(tm.players.CurrentPlayers()) do
         if player.playerId ~= matchDataTable.hostId and playerDataTable[player.playerId].prefs.autoJoin then
@@ -412,9 +431,10 @@ end
 
 function onJoinMatch(playerId)
     table.insert(matchDataTable.players, playerId)
-    tm.audio.PlayAudioAtGameobject(audioCues.boop, tm.players.GetPlayerGameObject(playerId))
-    for _, player in pairs(tm.players.CurrentPlayers()) do
-        matchLobbyPage(player.playerId) 
+    local playerObject = tm.players.GetPlayerGameObject(playerId)
+    tm.audio.PlayAudioAtGameobject(audioCues.boop, playerObject)
+    for i, player in ipairs(tm.players.CurrentPlayers()) do
+        MatchLobbyPage(player.playerId)
     end
 end
 
