@@ -1,5 +1,8 @@
--- Chicken Smash Minigame
--- by dinoman/ticibi 2021
+-- Chicken Smash Mod for Trailmakers, ticibi 2022
+-- name: Chicken Smash
+-- author: Thomas Bresee
+-- description: 
+
 
 local debug = false
 local chickenModel = "PFB_Runner"
